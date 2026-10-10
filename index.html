@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scoreboard – game leaderboards</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="wrap bar">
+  <a class="logo" href="index.html">Score<b>board</b></a>
+  <div class="right">
+    <span class="who" id="who"></span>
+    <button class="btn" id="openSubmit" hidden data-in>Submit score</button>
+    <a class="btn ghost" href="admin.html" style="text-decoration:none" hidden data-in>Inspector</a>
+    <button class="btn ghost" id="logout" hidden data-in>Log out</button>
+    <button class="btn" id="openAuth" data-out>Log in / Register</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Rank</th><th>Username</th><th>Score</th><th>Date</th></tr></thead>
+    <tbody id="board"></tbody>
+  </table></div>
+
+  <section data-in hidden>
+    <h2>My submissions</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Game</th><th>Score</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody id="mine"></tbody>
+    </table></div>
+  </section>
+</main>
+<footer>Scores appear after an inspector verifies the screenshot.</footer>
+
+<dialog id="authDlg"><form id="authForm">
+  <h2 id="authTitle" style="margin-top:0">Log in</h2>
+  <label for="u">Username</label><input id="u" autocomplete="username" required>
+  <label for="p">Password</label><input id="p" type="password" minlength="6" autocomplete="current-password" required>
+  <p class="err" id="authErr"></p>
+  <a href="#" id="switch">No account? Register</a>
+  <div class="row"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" id="authBtn">Log in</button></div>
+</form></dialog>
+
+<dialog id="subDlg"><form id="subForm">
+  <h2 style="margin-top:0">Submit your high score</h2>
+  <label for="game">Game</label><select id="game" required></select>
+  <label for="score">Score</label><input id="score" type="number" min="1" step="1" required>
+  <label for="img">Evidence (screenshot, max 5 MB)</label><input id="img" type="file" accept="image/*" required>
+  <p class="err" id="subMsg"></p>
+  <div class="row"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" id="subBtn">Send for review</button></div>
+</form></dialog>
+
+<script type="module" src="app.js"></script>
+</body></html>

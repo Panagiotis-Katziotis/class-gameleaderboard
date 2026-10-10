@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inspector – Scoreboard</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="wrap bar"><a class="logo" href="index.html">Score<b>board</b> inspector</a><a class="btn ghost" style="text-decoration:none" href="index.html">Back to leaderboards</a></div></header>
+<main class="wrap"><h2>Pending submissions</h2><p id="msg">Loading…</p><div id="list"></div></main>
+<script type="module">
+import { auth, db, GAMES, esc } from "./firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, doc, getDoc, getDocs, query, where, runTransaction, updateDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const $ = s => document.querySelector(s);
+
+onAuthStateChanged(auth, async u => {
+  if (!u) { $("#msg").innerHTML = `Log in on the <a href="index.html">main page</a> first, then come back.`; return; }
+  try {
+    if (!(await getDoc(doc(db, "admins", u.uid))).exists()) { $("#msg").textContent = "This account is not an inspector."; return; }
+    load();
+  } catch (e) { $("#msg").textContent = "This account is not an inspector."; }
+});
+
+async function load() {
+  const snap = await getDocs(query(collection(db, "submissions"), where("status", "==", "pending")));
+  const items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+  $("#msg").textContent = items.length ? `${items.length} waiting for review (oldest first).` : "Nothing to review. All caught up.";
+  $("#list").innerHTML = items.map(s => `
+    <div class="card" id="c-${s.id}">
+      <a href="${esc(s.imageUrl)}" target="_blank" rel="noopener"><img src="${esc(s.imageUrl)}" alt="Evidence screenshot"></a>
+      <div>
+        <dl><dt>User</dt><dd>${esc(s.username)}</dd><dt>Game</dt><dd>${esc(GAMES.find(g => g.id === s.game)?.name || s.game)}</dd>
+        <dt>Score</dt><dd>${s.score.toLocaleString()}</dd><dt>Submitted</dt><dd>${s.createdAt.toDate().toLocaleString()}</dd></dl>
+        <label>Reason (shown to the user if rejected)</label><input id="r-${s.id}" maxlength="120">
+        <div class="row"><button class="btn bad" data-a="reject" data-id="${s.id}">Reject</button><button class="btn ok" data-a="approve" data-id="${s.id}">Approve</button></div>
+      </div>
+    </div>`).join("");
+  window._items = Object.fromEntries(items.map(s => [s.id, s]));
+}
+
+$("#list").onclick = async e => {
+  const b = e.target.closest("button[data-a]"); if (!b) return;
+  const s = window._items[b.dataset.id], ref = doc(db, "submissions", s.id);
+  b.closest(".card").querySelectorAll("button").forEach(x => x.disabled = true);
+  try {
+    if (b.dataset.a === "approve") {
+      await runTransaction(db, async t => {
+        const er = doc(db, "leaderboards", s.game, "entries", s.uid), ex = await t.get(er);
+        if (!ex.exists() || ex.data().score < s.score)   // keep only the user's best verified score
+          t.set(er, { uid: s.uid, username: s.username, score: s.score, date: s.createdAt, submissionId: s.id });
+        t.update(ref, { status: "approved", reviewedBy: auth.currentUser.uid, reviewedAt: serverTimestamp() });
+      });
+    } else {
+      await updateDoc(ref, { status: "rejected", reason: $("#r-" + s.id).value.trim(), reviewedBy: auth.currentUser.uid, reviewedAt: serverTimestamp() });
+    }
+    $("#c-" + s.id).remove();
+  } catch (x) { alert("Failed: " + (x.code || x.message)); b.closest(".card").querySelectorAll("button").forEach(x => x.disabled = false); }
+};
+</script></body></html>
